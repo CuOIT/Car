@@ -13,7 +13,14 @@ const tasks = [
   ["drive", "Đi đúng làn 120 m", "W A S D"],
 ] as const;
 
+const lessons = [
+  { title: "Khởi động & vào số", goal: "Đi đúng làn 120 m", target: 120, seconds: 120 },
+  { title: "Giữ làn & xi-nhan", goal: "Giữ làn ổn định 180 m", target: 180, seconds: 150 },
+  { title: "Đường đêm phức tạp", goal: "Lái an toàn 240 m", target: 240, seconds: 180 },
+] as const;
+
 export default function Home() {
+  const [lessonIndex, setLessonIndex] = useState(0);
   const [started, setStarted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [gear, setGear] = useState<Gear>("P");
@@ -59,12 +66,15 @@ export default function Home() {
     toast(text, "bad");
   }, [toast]);
 
-  const reset = useCallback(() => {
+  const startLesson = useCallback((index: number) => {
     keys.current.clear(); awarded.current.clear(); speedWarning.current = false;
+    setLessonIndex(index);
     setGear("P"); setBelt(false); setEngine(false); setHandbrake(true); setSignal(null);
     setSpeed(0); setLane(0); setDistance(0); setScore(0); setSafety(100); setCombo(1);
-    setTime(120); setActiveKeys([]); setToasts([]); setPaused(false); setStarted(true);
+    setTime(lessons[index].seconds); setActiveKeys([]); setToasts([]); setPaused(false); setStarted(true);
   }, []);
+
+  const lesson = lessons[lessonIndex];
 
   const shift = (next: Gear) => {
     if (!started || paused) return;
@@ -134,18 +144,24 @@ export default function Home() {
     return () => window.clearInterval(id);
   }, [paused, started, time]);
 
-  useEffect(() => { if (distance >= 120 && Math.abs(lane) < .75) reward("drive", "Hoàn thành quãng đường đúng làn"); }, [distance, lane, reward]);
+  useEffect(() => { if (distance >= lesson.target && Math.abs(lane) < .75) reward("drive", "Hoàn thành quãng đường đúng làn"); }, [distance, lane, lesson.target, reward]);
 
-  const done = useMemo(() => ({ belt, engine, gear: gear === "D", handbrake: !handbrake, drive: distance >= 120 && Math.abs(lane) < .75 }), [belt, engine, gear, handbrake, distance, lane]);
+  const done = useMemo(() => ({ belt, engine, gear: gear === "D", handbrake: !handbrake, drive: distance >= lesson.target && Math.abs(lane) < .75 }), [belt, engine, gear, handbrake, distance, lane, lesson.target]);
   const count = Object.values(done).filter(Boolean).length;
   const finished = count === 5;
 
   const keyOn = (k: string) => activeKeys.includes(k) || activeKeys.includes(k === "↑" ? "arrowup" : k === "↓" ? "arrowdown" : k === "←" ? "arrowleft" : k === "→" ? "arrowright" : "");
+  const controlKey = (k: string) => ({ "↑": "ArrowUp", "↓": "ArrowDown", "←": "ArrowLeft", "→": "ArrowRight" }[k] || k);
+  const pressControl = (k: string, hold: boolean) => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: controlKey(k), bubbles: true }));
+    if (!hold) window.setTimeout(() => window.dispatchEvent(new KeyboardEvent("keyup", { key: controlKey(k), bubbles: true })), 80);
+  };
+  const releaseControl = (k: string) => window.dispatchEvent(new KeyboardEvent("keyup", { key: controlKey(k), bubbles: true }));
 
   return <main className="sim">
     <header className="topbar">
       <div className="brand"><b>◉</b><strong>CABIN QUEST</strong></div>
-      <div className="lesson"><em>Bài 01</em><span>•</span>Khởi động &amp; vào số</div>
+      <div className="lesson"><em>Bài {String(lessonIndex + 1).padStart(2, "0")}</em><span>•</span>{lesson.title}</div>
       <div className="top-actions"><div className="xp"><i>XP</i>{xp.toLocaleString("vi-VN")}</div><button onClick={() => setHelp(true)} aria-label="Hướng dẫn">?</button><button onClick={() => started && setPaused(v => !v)}>Tạm dừng <kbd>ESC</kbd></button></div>
     </header>
 
@@ -154,16 +170,16 @@ export default function Home() {
       <div className="guides" style={{ transform: `translateX(calc(-50% + ${-lane * 24}px))` }}><i/><i/><i/><i/></div>
 
       <aside className="leftcol">
-        <section className="panel mission-panel"><h3>⌖ &nbsp; NHIỆM VỤ HIỆN TẠI</h3><div className="current"><b>{finished ? "✓" : ""}</b><div><strong>{finished ? "Bài tập hoàn thành!" : tasks[count]?.[1]}</strong><small>{finished ? "Kết quả đã sẵn sàng" : count === 4 ? `${Math.min(120, Math.round(distance))} / 120 m · W A S D` : tasks[count]?.[2]}</small></div></div>
-          <div className="tasklist">{tasks.map((t, i) => <div key={t[0]} className={done[t[0]] ? "done" : i === count ? "active" : ""}><b>{done[t[0]] ? "✓" : i+1}</b><span>{t[1]}</span></div>)}</div>
+        <section className="panel mission-panel"><h3>⌖ &nbsp; NHIỆM VỤ HIỆN TẠI</h3><div className="current"><b>{finished ? "✓" : ""}</b><div><strong>{finished ? "Bài tập hoàn thành!" : count === 4 ? lesson.goal : tasks[count]?.[1]}</strong><small>{finished ? "Kết quả đã sẵn sàng" : count === 4 ? `${Math.min(lesson.target, Math.round(distance))} / ${lesson.target} m · W A S D` : tasks[count]?.[2]}</small></div></div>
+          <div className="tasklist">{tasks.map((t, i) => <div key={t[0]} className={done[t[0]] ? "done" : i === count ? "active" : ""}><b>{done[t[0]] ? "✓" : i+1}</b><span>{t[0] === "drive" ? lesson.goal : t[1]}</span></div>)}</div>
         </section>
         <section className="panel controls"><h3>⌨ &nbsp; ĐIỀU KHIỂN</h3>
-          {[[["W","↑"],"Tăng tốc"],[["S","↓"],"Phanh chân"],[["A","D","←","→"],"Đánh lái"],[["Q","E"],"Xi-nhan"]].map((row) => <div className="control" key={row[1] as string}><span>{(row[0] as string[]).map(k => <kbd className={keyOn(k) ? "pressed" : ""} key={k}>{k}</kbd>)}</span><small>{row[1] as string}</small></div>)}
-          <div className="control compact"><span><kbd>B</kbd><kbd>I</kbd><kbd>H</kbd></span><small>Dây · Máy · Phanh tay</small></div>
+          {[[["W","↑"],"Tăng tốc"],[["S","↓"],"Phanh chân"],[["A","D","←","→"],"Đánh lái"],[["Q","E"],"Xi-nhan"]].map((row) => <div className="control" key={row[1] as string}><span>{(row[0] as string[]).map(k => { const hold = !["Q","E"].includes(k); return <button className={`vkey ${keyOn(k) ? "pressed" : ""}`} key={k} onPointerDown={e => { e.preventDefault(); pressControl(k, hold); }} onPointerUp={() => hold && releaseControl(k)} onPointerLeave={() => hold && releaseControl(k)}>{k}</button>})}</span><small>{row[1] as string}</small></div>)}
+          <div className="control compact"><span>{["B","I","H"].map(k => <button className="vkey action" key={k} onClick={() => pressControl(k, false)}>{k}</button>)}</span><small>Dây · Máy · Phanh tay</small></div>
         </section>
       </aside>
 
-      <div className="drivehud"><span className={signal === "left" ? "blink" : ""}>◀</span><div><small>TỐC ĐỘ</small><strong>{Math.round(speed)}</strong><em>km/h</em></div><section className="distancehud"><small>QUÃNG ĐƯỜNG</small><strong>{Math.min(120, Math.round(distance))}<em> / 120 m</em></strong><i><b style={{ width: `${Math.min(100, distance / 1.2)}%` }} /></i></section><span className={signal === "right" ? "blink" : ""}>▶</span><b>{gear}</b></div>
+      <div className="drivehud"><span className={signal === "left" ? "blink" : ""}>◀</span><div><small>TỐC ĐỘ</small><strong>{Math.round(speed)}</strong><em>km/h</em></div><section className="distancehud"><small>QUÃNG ĐƯỜNG</small><strong>{Math.min(lesson.target, Math.round(distance))}<em> / {lesson.target} m</em></strong><i><b style={{ width: `${Math.min(100, distance / lesson.target * 100)}%` }} /></i></section><span className={signal === "right" ? "blink" : ""}>▶</span><b>{gear}</b></div>
 
       <aside className="panel gear-panel"><h3>⚙ &nbsp; CẦN SỐ TỰ ĐỘNG</h3><div className="shifter"><div>{(["P","R","N","D"] as Gear[]).map(g => <button key={g} className={gear === g ? `active g-${g}` : ""} onClick={() => shift(g)} aria-label={`Chuyển sang số ${g}`}>{g}<i/></button>)}</div><span className={`stick pos-${gear}`}><i/></span></div>
         <p className="gear-tip">↖ <span>Giữ <kbd>S</kbd>, sau đó<br/><b>nhấp chuột để vào số</b></span></p>
@@ -175,9 +191,9 @@ export default function Home() {
       <footer><div><b>{count} / 5</b><span>{finished ? "Xuất sắc!" : "Đang luyện tập"}</span></div><section>{tasks.map((t,i) => <i key={t[0]} className={done[t[0]] ? "done" : i === count ? "now" : ""}/>)}</section><div className="clock"><small>THỜI GIAN</small><b>{String(Math.floor(time/60)).padStart(2,"0")}:{String(time%60).padStart(2,"0")}</b></div></footer>
     </section>
 
-    {!started && <div className="overlay"><section className="startbox"><small>CHƯƠNG TRÌNH HẠNG B · SỐ TỰ ĐỘNG</small><h1>Khởi động đúng.<br/><em>Lái xe an toàn.</em></h1><p>Hoàn thành 5 thao tác cabin theo đúng trình tự. Bàn phím điều khiển xe; cần số P–R–N–D chỉ thao tác bằng chuột.</p><div><span>⌨ Bàn phím</span><span>↖ Chuột vào số</span><span>◷ 2 phút</span></div><button onClick={reset}>BẮT ĐẦU BÀI 01 <b>→</b></button><i>Mục tiêu: đạt ≥80 điểm an toàn</i></section></div>}
-    {paused && started && <div className="overlay soft"><section className="pausebox"><small>ĐÃ TẠM DỪNG</small><h2>Hít thở. Quan sát. Tiếp tục.</h2><button onClick={() => setPaused(false)}>TIẾP TỤC</button><button className="ghost" onClick={reset}>CHƠI LẠI</button></section></div>}
-    {finished && started && !paused && <section className="result"><b>★★★</b><h2>Hoàn thành bài 01</h2><p>{score.toLocaleString("vi-VN")} điểm · An toàn {safety}%</p><button onClick={reset}>Luyện lại</button></section>}
+    {!started && <div className="overlay"><section className="startbox"><small>CHƯƠNG TRÌNH HẠNG B · SỐ TỰ ĐỘNG</small><h1>Khởi động đúng.<br/><em>Lái xe an toàn.</em></h1><p>Hoàn thành 3 bài tăng dần độ khó. Có thể dùng bàn phím hoặc nhấn trực tiếp các nút mô phỏng; cần số P–R–N–D thao tác bằng chuột.</p><div><span>⌨ Bàn phím</span><span>☝ Nút mô phỏng</span><span>↖ Chuột vào số</span></div><button onClick={() => startLesson(0)}>BẮT ĐẦU BÀI 01 <b>→</b></button><i>Mục tiêu: đạt ≥80 điểm an toàn</i></section></div>}
+    {paused && started && <div className="overlay soft"><section className="pausebox"><small>ĐÃ TẠM DỪNG</small><h2>Hít thở. Quan sát. Tiếp tục.</h2><button onClick={() => setPaused(false)}>TIẾP TỤC</button><button className="ghost" onClick={() => startLesson(lessonIndex)}>CHƠI LẠI</button></section></div>}
+    {finished && started && !paused && <section className="result"><b>★★★</b><h2>Hoàn thành bài {String(lessonIndex + 1).padStart(2, "0")}</h2><p>{score.toLocaleString("vi-VN")} điểm · An toàn {safety}%</p>{lessonIndex < lessons.length - 1 ? <button className="next" onClick={() => startLesson(lessonIndex + 1)}>BÀI TIẾP THEO →</button> : <button onClick={() => startLesson(0)}>HỌC LẠI TỪ ĐẦU</button>}<button className="retry" onClick={() => startLesson(lessonIndex)}>Luyện lại bài này</button></section>}
     {help && <div className="overlay soft" onClick={() => setHelp(false)}><section className="helpbox" onClick={e => e.stopPropagation()}><button className="x" onClick={() => setHelp(false)}>×</button><small>CHƯƠNG TRÌNH 2026</small><h2>Nội dung Cabin Quest bám sát</h2><div className="curriculum"><span>01 · Làm quen xe tại chỗ</span><span>02 · Bãi phẳng &amp; chữ chi</span><span>03 · Đường bằng</span><span>04 · Dốc &amp; đường quanh co</span><span>05 · Đường phức tạp</span><span>06 · Lái ban đêm</span></div><p>Bài hiện tại mô phỏng thao tác chuẩn bị, số tự động và kiểm soát làn. Đây là sản phẩm luyện tập, không thay thế chương trình tại cơ sở đào tạo.</p><a href="https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/4/17-bxd-kem.pdf" target="_blank" rel="noreferrer">Xem chương trình chính thức ↗</a><button onClick={() => setHelp(false)}>ĐÃ HIỂU</button></section></div>}
   </main>;
 }
