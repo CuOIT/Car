@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Road3D from "./Road3D";
 
 type Gear = "P" | "R" | "N" | "D";
 type Toast = { id: number; text: string; kind: "ok" | "bad" };
@@ -271,7 +272,7 @@ export default function Home() {
 
     <section className="stage">
       <div className="world" style={{ transform: `translateX(${-lane * 2.4}%) scale(1.05)` }} /><div className="shade" />
-      <RoadCanvas speed={speed} lane={lane} scene={lesson.scene} />
+      <Road3D speed={speed} lane={lane} scene={lesson.scene} />
       <div className={`scene-badge ${lesson.scene}`} aria-live="polite">{lesson.scene === "curve" ? "↝ ĐƯỜNG CONG" : lesson.scene === "hazard" ? "⚠ CHÚ Ý VẬT CẢN" : lesson.scene === "highway" ? "⬆ CAO TỐC" : lesson.scene === "night" ? "◉ TẦM NHÌN HẠN CHẾ" : lesson.scene === "slalom" ? "↭ ĐƯỜNG CHỮ CHI" : ""}</div>
       <div className="guides" style={{ transform: `translateX(calc(-50% + ${-lane * 24}px))` }}><i/><i/><i/><i/></div>
 
