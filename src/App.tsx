@@ -161,7 +161,7 @@ export default function Home() {
   return <main className="sim">
     <header className="topbar">
       <div className="brand"><b>◉</b><strong>CABIN QUEST</strong></div>
-      <div className="lesson"><em>Bài {String(lessonIndex + 1).padStart(2, "0")}</em><span>•</span>{lesson.title}</div>
+      <div className="lesson"><div><em>Bài {String(lessonIndex + 1).padStart(2, "0")}</em><span>•</span>{lesson.title}</div><nav aria-label="Chọn bài học">{lessons.map((item, index) => <button key={item.title} className={index === lessonIndex ? "active" : ""} onClick={() => startLesson(index)}>Bài {index + 1}</button>)}</nav></div>
       <div className="top-actions"><div className="xp"><i>XP</i>{xp.toLocaleString("vi-VN")}</div><button onClick={() => setHelp(true)} aria-label="Hướng dẫn">?</button><button onClick={() => started && setPaused(v => !v)}>Tạm dừng <kbd>ESC</kbd></button></div>
     </header>
 
