@@ -173,9 +173,18 @@ export default function Home() {
         <section className="panel mission-panel"><h3>⌖ &nbsp; NHIỆM VỤ HIỆN TẠI</h3><div className="current"><b>{finished ? "✓" : ""}</b><div><strong>{finished ? "Bài tập hoàn thành!" : count === 4 ? lesson.goal : tasks[count]?.[1]}</strong><small>{finished ? "Kết quả đã sẵn sàng" : count === 4 ? `${Math.min(lesson.target, Math.round(distance))} / ${lesson.target} m · W A S D` : tasks[count]?.[2]}</small></div></div>
           <div className="tasklist">{tasks.map((t, i) => <div key={t[0]} className={done[t[0]] ? "done" : i === count ? "active" : ""}><b>{done[t[0]] ? "✓" : i+1}</b><span>{t[0] === "drive" ? lesson.goal : t[1]}</span></div>)}</div>
         </section>
-        <section className="panel controls"><h3>⌨ &nbsp; ĐIỀU KHIỂN</h3>
-          {[[["W","↑"],"Tăng tốc"],[["S","↓"],"Phanh chân"],[["A","D","←","→"],"Đánh lái"],[["Q","E"],"Xi-nhan"]].map((row) => <div className="control" key={row[1] as string}><span>{(row[0] as string[]).map(k => { const hold = !["Q","E"].includes(k); return <button className={`vkey ${keyOn(k) ? "pressed" : ""}`} key={k} onPointerDown={e => { e.preventDefault(); pressControl(k, hold); }} onPointerUp={() => hold && releaseControl(k)} onPointerLeave={() => hold && releaseControl(k)}>{k}</button>})}</span><small>{row[1] as string}</small></div>)}
-          <div className="control compact"><span>{["B","I","H"].map(k => <button className="vkey action" key={k} onClick={() => pressControl(k, false)}>{k}</button>)}</span><small>Dây · Máy · Phanh tay</small></div>
+        <section className="panel controls"><h3>⌨ &nbsp; BÀN ĐIỀU KHIỂN</h3>
+          <div className="control-deck">
+            <button className={`deck-btn signal-left ${signal === "left" ? "on" : ""}`} onClick={() => pressControl("Q", false)}><b>◀</b><span>Q</span><small>TRÁI</small></button>
+            <div className="drive-pad">
+              <button className={`deck-btn gas ${keyOn("W") ? "pressed" : ""}`} onPointerDown={e => { e.preventDefault(); pressControl("W", true); }} onPointerUp={() => releaseControl("W")} onPointerLeave={() => releaseControl("W")}><b>W</b><small>TĂNG TỐC</small></button>
+              <button className={`deck-btn steer left ${keyOn("A") ? "pressed" : ""}`} onPointerDown={e => { e.preventDefault(); pressControl("A", true); }} onPointerUp={() => releaseControl("A")} onPointerLeave={() => releaseControl("A")}><b>A</b><small>TRÁI</small></button>
+              <button className={`deck-btn brake ${keyOn("S") ? "pressed" : ""}`} onPointerDown={e => { e.preventDefault(); pressControl("S", true); }} onPointerUp={() => releaseControl("S")} onPointerLeave={() => releaseControl("S")}><b>S</b><small>PHANH</small></button>
+              <button className={`deck-btn steer right ${keyOn("D") ? "pressed" : ""}`} onPointerDown={e => { e.preventDefault(); pressControl("D", true); }} onPointerUp={() => releaseControl("D")} onPointerLeave={() => releaseControl("D")}><b>D</b><small>PHẢI</small></button>
+            </div>
+            <button className={`deck-btn signal-right ${signal === "right" ? "on" : ""}`} onClick={() => pressControl("E", false)}><b>▶</b><span>E</span><small>PHẢI</small></button>
+          </div>
+          <div className="cabin-sequence"><small>CHUẨN BỊ XE</small><div><button className={belt ? "done" : ""} onClick={() => pressControl("B", false)}><b>B</b><span>Dây an toàn</span></button><i>→</i><button className={engine ? "done" : ""} onClick={() => pressControl("I", false)}><b>I</b><span>Động cơ</span></button><i>→</i><button className={!handbrake ? "done" : ""} onClick={() => pressControl("H", false)}><b>H</b><span>Phanh tay</span></button></div></div>
         </section>
       </aside>
 
