@@ -29,6 +29,12 @@ const lessons = [
   { title: "Ôn luyện sát hạch", goal: "Hoàn thành bài tổng hợp 360 m", target: 360, seconds: 240, scene: "exam" },
 ] as const;
 
+function routeCenter(scene: string, metres: number) {
+  if (scene === "slalom") return Math.sin(metres / 22) * .86;
+  if (scene === "curve") return Math.sin((metres + 18) / 55) * .78;
+  return 0;
+}
+
 export default function Home() {
   const [lessonIndex, setLessonIndex] = useState(0);
   const [started, setStarted] = useState(false);
@@ -50,6 +56,8 @@ export default function Home() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [help, setHelp] = useState(false);
   const keys = useRef(new Set<string>());
+  const laneRef = useRef(0);
+  const distanceRef = useRef(0);
   const awarded = useRef(new Set<string>());
   const toastId = useRef(0);
   const speedWarning = useRef(false);
@@ -77,7 +85,7 @@ export default function Home() {
   }, [toast]);
 
   const startLesson = useCallback((index: number) => {
-    keys.current.clear(); awarded.current.clear(); speedWarning.current = false;
+    keys.current.clear(); awarded.current.clear(); speedWarning.current = false; laneRef.current = 0; distanceRef.current = 0;
     setLessonIndex(index);
     setGear("P"); setBelt(false); setEngine(false); setHandbrake(true); setSignal(null);
     setSpeed(0); setLane(0); setDistance(0); setScore(0); setSafety(100); setCombo(1);
@@ -129,24 +137,30 @@ export default function Home() {
       const right = keys.current.has("d") || keys.current.has("arrowright");
       setSpeed((v) => {
         let n = v;
+        const laneErrorNow = laneRef.current - routeCenter(lesson.scene, distanceRef.current);
+        const onRoad = Math.abs(laneErrorNow) < .58;
         if (brake) n -= 2.2;
         else if (gas && engine && !handbrake && (gear === "D" || gear === "R")) n += gear === "D" ? .72 : .38;
         else n -= .28;
+        if (!onRoad && n > 3) n -= 1.25;
         n = Math.max(0, Math.min(42, n));
-        if (n > .2) { setDistance((d) => d + n / 72); setScore((s) => s + 1); }
+        if (n > .2 && onRoad) { setDistance((d) => { const next = d + n / 72; distanceRef.current = next; return next; }); setScore((s) => s + 1); }
         if (n > 30 && !speedWarning.current) { penalize("Quá giới hạn 30 km/h", 4); speedWarning.current = true; }
         if (n < 27) speedWarning.current = false;
         return n;
       });
       setLane((v) => {
         const steer = (right ? 1 : 0) - (left ? 1 : 0);
-        const n = Math.max(-1.35, Math.min(1.35, v + steer * .055));
-        if (Math.abs(n) > 1.05 && Math.abs(v) <= 1.05) penalize("Chạm vạch làn đường", 6);
+        const n = Math.max(-1.45, Math.min(1.45, v + steer * .055));
+        const target = routeCenter(lesson.scene, distanceRef.current);
+        const error = n - target; const previousError = v - target;
+        if (Math.abs(error) > .64 && Math.abs(previousError) <= .64) penalize("Lệch khỏi làn — hãy đánh lái theo đường", 6);
+        laneRef.current = n;
         return n;
       });
     }, 50);
     return () => window.clearInterval(loop);
-  }, [engine, gear, handbrake, paused, penalize, started]);
+  }, [engine, gear, handbrake, lesson.scene, paused, penalize, started]);
 
   useEffect(() => {
     if (!started || paused || time <= 0) return;
@@ -159,6 +173,7 @@ export default function Home() {
   const done = useMemo(() => ({ belt, engine, gear: gear === "D", handbrake: !handbrake, drive: distance >= lesson.target }), [belt, engine, gear, handbrake, distance, lesson.target]);
   const count = Object.values(done).filter(Boolean).length;
   const finished = count === 5;
+  const laneError = lane - routeCenter(lesson.scene, distance);
 
   const keyOn = (k: string) => activeKeys.includes(k) || activeKeys.includes(k === "↑" ? "arrowup" : k === "↓" ? "arrowdown" : k === "←" ? "arrowleft" : k === "→" ? "arrowright" : "");
   const controlKey = (k: string) => ({ "↑": "ArrowUp", "↓": "ArrowDown", "←": "ArrowLeft", "→": "ArrowRight" }[k] || k);
@@ -176,10 +191,11 @@ export default function Home() {
     </header>
 
     <section className="stage">
-      <div className="world" style={{ transform: `translateX(${-lane * 2.4}%) scale(1.05)` }} /><div className="shade" />
-      <Road3D speed={speed} lane={lane} scene={lesson.scene} />
+      <div className="world" style={{ transform: `translateX(${-laneError * 2.4}%) scale(1.05)` }} /><div className="shade" />
+      <Road3D speed={speed} lane={lane} distance={distance} scene={lesson.scene} />
       <div className={`scene-badge ${lesson.scene}`} aria-live="polite">{lesson.scene === "curve" ? "↝ ĐƯỜNG CONG" : lesson.scene === "hazard" ? "⚠ CHÚ Ý VẬT CẢN" : lesson.scene === "highway" ? "⬆ CAO TỐC" : lesson.scene === "night" ? "◉ TẦM NHÌN HẠN CHẾ" : lesson.scene === "slalom" ? "↭ ĐƯỜNG CHỮ CHI" : ""}</div>
-      <div className="guides" style={{ transform: `translateX(calc(-50% + ${-lane * 24}px))` }}><i/><i/><i/><i/></div>
+      <div className={`lane-assist ${Math.abs(laneError) < .38 ? "ok" : "warn"}`}>{Math.abs(laneError) < .38 ? "✓ ĐÚNG LÀN" : laneError < 0 ? "→ ĐÁNH LÁI PHẢI" : "← ĐÁNH LÁI TRÁI"}</div>
+      <div className="guides" style={{ transform: `translateX(calc(-50% + ${-laneError * 34}px))` }}><i/><i/><i/><i/></div>
 
       <aside className="leftcol">
         <section className="panel mission-panel"><h3>⌖ &nbsp; NHIỆM VỤ HIỆN TẠI</h3><div className="current"><b>{finished ? "✓" : ""}</b><div><strong>{finished ? "Bài tập hoàn thành!" : count === 4 ? lesson.goal : tasks[count]?.[1]}</strong><small>{finished ? "Kết quả đã sẵn sàng" : count === 4 ? `${Math.min(lesson.target, Math.round(distance))} / ${lesson.target} m · W A S D` : tasks[count]?.[2]}</small></div></div>
