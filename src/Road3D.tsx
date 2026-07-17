@@ -95,14 +95,19 @@ export default function Road3D({ speed, lane, scene: sceneName }: Props) {
       camera.aspect = Math.max(.1, rect.width / Math.max(1, rect.height)); camera.updateProjectionMatrix();
       const dt = Math.min(.05, (now - last) / 1000); last = now;
       const current = live.current; const travel = current.speed * dt * .56;
-      const curved = current.sceneName === "curve" || current.sceneName === "slalom";
       camera.position.x += ((current.lane * 1.65) - camera.position.x) * Math.min(1, dt * 5);
       camera.rotation.z += ((-current.lane * .022) - camera.rotation.z) * Math.min(1, dt * 4);
       movers.forEach(obj => {
         obj.position.z += travel;
         if (obj.position.z > 10) obj.position.z -= 184;
         const baseX = Number(obj.userData.baseX || 0);
-        const curve = curved ? Math.sin((obj.position.z + now * .012) * .028) * (current.sceneName === "slalom" ? 2.4 : 4.2) : 0;
+        // The route is a fixed function of world depth. Never include clock time here:
+        // a stopped vehicle must see a completely stationary road.
+        const curve = current.sceneName === "slalom"
+          ? Math.sin(obj.position.z * .065) * 2.25
+          : current.sceneName === "curve"
+            ? Math.sin((obj.position.z + 28) * .022) * 4.1
+            : 0;
         obj.position.x = baseX + curve;
         if (obj.userData.hazard) obj.visible = ["slalom", "hazard", "exam", "yard"].includes(current.sceneName);
         if (obj.userData.vehicle) obj.visible = ["highway", "hazard", "load", "exam", "urban"].includes(current.sceneName);
