@@ -154,7 +154,7 @@ export default function Home() {
       <div className="guides" style={{ transform: `translateX(calc(-50% + ${-lane * 24}px))` }}><i/><i/><i/><i/></div>
 
       <aside className="leftcol">
-        <section className="panel mission-panel"><h3>⌖ &nbsp; NHIỆM VỤ HIỆN TẠI</h3><div className="current"><b>{finished ? "✓" : ""}</b><div><strong>{finished ? "Bài tập hoàn thành!" : tasks[count]?.[1]}</strong><small>{finished ? "Kết quả đã sẵn sàng" : tasks[count]?.[2]}</small></div></div>
+        <section className="panel mission-panel"><h3>⌖ &nbsp; NHIỆM VỤ HIỆN TẠI</h3><div className="current"><b>{finished ? "✓" : ""}</b><div><strong>{finished ? "Bài tập hoàn thành!" : tasks[count]?.[1]}</strong><small>{finished ? "Kết quả đã sẵn sàng" : count === 4 ? `${Math.min(120, Math.round(distance))} / 120 m · W A S D` : tasks[count]?.[2]}</small></div></div>
           <div className="tasklist">{tasks.map((t, i) => <div key={t[0]} className={done[t[0]] ? "done" : i === count ? "active" : ""}><b>{done[t[0]] ? "✓" : i+1}</b><span>{t[1]}</span></div>)}</div>
         </section>
         <section className="panel controls"><h3>⌨ &nbsp; ĐIỀU KHIỂN</h3>
@@ -163,7 +163,7 @@ export default function Home() {
         </section>
       </aside>
 
-      <div className="drivehud"><span className={signal === "left" ? "blink" : ""}>◀</span><div><small>TỐC ĐỘ</small><strong>{Math.round(speed)}</strong><em>km/h</em></div><span className={signal === "right" ? "blink" : ""}>▶</span><b>{gear}</b></div>
+      <div className="drivehud"><span className={signal === "left" ? "blink" : ""}>◀</span><div><small>TỐC ĐỘ</small><strong>{Math.round(speed)}</strong><em>km/h</em></div><section className="distancehud"><small>QUÃNG ĐƯỜNG</small><strong>{Math.min(120, Math.round(distance))}<em> / 120 m</em></strong><i><b style={{ width: `${Math.min(100, distance / 1.2)}%` }} /></i></section><span className={signal === "right" ? "blink" : ""}>▶</span><b>{gear}</b></div>
 
       <aside className="panel gear-panel"><h3>⚙ &nbsp; CẦN SỐ TỰ ĐỘNG</h3><div className="shifter"><div>{(["P","R","N","D"] as Gear[]).map(g => <button key={g} className={gear === g ? `active g-${g}` : ""} onClick={() => shift(g)} aria-label={`Chuyển sang số ${g}`}>{g}<i/></button>)}</div><span className={`stick pos-${gear}`}><i/></span></div>
         <p className="gear-tip">↖ <span>Giữ <kbd>S</kbd>, sau đó<br/><b>nhấp chuột để vào số</b></span></p>
