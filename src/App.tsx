@@ -14,9 +14,18 @@ const tasks = [
 ] as const;
 
 const lessons = [
-  { title: "Khởi động & vào số", goal: "Đi đúng làn 120 m", target: 120, seconds: 120 },
-  { title: "Giữ làn & xi-nhan", goal: "Giữ làn ổn định 180 m", target: 180, seconds: 150 },
-  { title: "Đường đêm phức tạp", goal: "Lái an toàn 240 m", target: 240, seconds: 180 },
+  { title: "Tại chỗ không nổ máy", goal: "Làm quen điều khiển 60 m", target: 60, seconds: 120, scene: "stand" },
+  { title: "Tại chỗ có nổ máy", goal: "Khởi động và kiểm tra xe 80 m", target: 80, seconds: 120, scene: "stand" },
+  { title: "Bãi phẳng", goal: "Đi đúng hướng 120 m", target: 120, seconds: 140, scene: "yard" },
+  { title: "Hình 3, 8 & chữ chi", goal: "Đi qua đường chữ chi 160 m", target: 160, seconds: 160, scene: "slalom" },
+  { title: "Đường bằng", goal: "Giữ làn ổn định 200 m", target: 200, seconds: 170, scene: "urban" },
+  { title: "Tổng hợp sân tập", goal: "Hoàn thành tổ hợp 240 m", target: 240, seconds: 190, scene: "yard" },
+  { title: "Đường cao tốc", goal: "Nhập làn và giữ hướng 320 m", target: 320, seconds: 200, scene: "highway" },
+  { title: "Dốc & đường quanh co", goal: "Kiểm soát đường cong 260 m", target: 260, seconds: 200, scene: "curve" },
+  { title: "Đường phức tạp", goal: "Vượt khu vực nguy hiểm 280 m", target: 280, seconds: 210, scene: "hazard" },
+  { title: "Lái xe ban đêm", goal: "Quan sát và giữ làn 240 m", target: 240, seconds: 190, scene: "night" },
+  { title: "Lái xe có tải", goal: "Đi êm và giữ khoảng cách 220 m", target: 220, seconds: 190, scene: "load" },
+  { title: "Ôn luyện sát hạch", goal: "Hoàn thành bài tổng hợp 360 m", target: 360, seconds: 240, scene: "exam" },
 ] as const;
 
 export default function Home() {
@@ -31,6 +40,7 @@ export default function Home() {
   const [speed, setSpeed] = useState(0);
   const [lane, setLane] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [roadPhase, setRoadPhase] = useState(0);
   const [score, setScore] = useState(0);
   const [safety, setSafety] = useState(100);
   const [combo, setCombo] = useState(1);
@@ -70,7 +80,7 @@ export default function Home() {
     keys.current.clear(); awarded.current.clear(); speedWarning.current = false;
     setLessonIndex(index);
     setGear("P"); setBelt(false); setEngine(false); setHandbrake(true); setSignal(null);
-    setSpeed(0); setLane(0); setDistance(0); setScore(0); setSafety(100); setCombo(1);
+    setSpeed(0); setLane(0); setDistance(0); setRoadPhase(0); setScore(0); setSafety(100); setCombo(1);
     setTime(lessons[index].seconds); setActiveKeys([]); setToasts([]); setPaused(false); setStarted(true);
   }, []);
 
@@ -123,7 +133,7 @@ export default function Home() {
         else if (gas && engine && !handbrake && (gear === "D" || gear === "R")) n += gear === "D" ? .72 : .38;
         else n -= .28;
         n = Math.max(0, Math.min(42, n));
-        if (n > .2) { setDistance((d) => d + n / 72); setScore((s) => s + 1); }
+        if (n > .2) { setDistance((d) => d + n / 72); setRoadPhase((p) => (p + n / 5200) % 1); setScore((s) => s + 1); }
         if (n > 30 && !speedWarning.current) { penalize("Quá giới hạn 30 km/h", 4); speedWarning.current = true; }
         if (n < 27) speedWarning.current = false;
         return n;
@@ -161,12 +171,13 @@ export default function Home() {
   return <main className="sim">
     <header className="topbar">
       <div className="brand"><b>◉</b><strong>CABIN QUEST</strong></div>
-      <div className="lesson"><div><em>Bài {String(lessonIndex + 1).padStart(2, "0")}</em><span>•</span>{lesson.title}</div><nav aria-label="Chọn bài học">{lessons.map((item, index) => <button key={item.title} className={index === lessonIndex ? "active" : ""} onClick={() => startLesson(index)}>Bài {index + 1}</button>)}</nav></div>
+      <div className="lesson"><div><em>Bài {String(lessonIndex + 1).padStart(2, "0")}/12</em><span>•</span>{lesson.title}</div><nav aria-label="Chọn bài học"><button disabled={lessonIndex === 0} onClick={() => startLesson(lessonIndex - 1)}>‹</button><select value={lessonIndex} onChange={e => startLesson(Number(e.target.value))}>{lessons.map((item, index) => <option key={item.title} value={index}>Bài {index + 1}: {item.title}</option>)}</select><button disabled={lessonIndex === lessons.length - 1} onClick={() => startLesson(lessonIndex + 1)}>›</button></nav></div>
       <div className="top-actions"><div className="xp"><i>XP</i>{xp.toLocaleString("vi-VN")}</div><button onClick={() => setHelp(true)} aria-label="Hướng dẫn">?</button><button onClick={() => started && setPaused(v => !v)}>Tạm dừng <kbd>ESC</kbd></button></div>
     </header>
 
     <section className="stage">
       <div className="world" style={{ transform: `translateX(${-lane * 2.4}%) scale(1.05)` }} /><div className="shade" />
+      <div className={`road-fx scene-${lesson.scene}`} aria-hidden="true">{Array.from({ length: 12 }, (_, i) => { const p = (roadPhase + i / 12) % 1; return <i key={i} style={{ left: `${50 - lane * 5 + (i % 2 ? 1 : -1) * (3 + p * 10)}%`, top: `${38 + p * 45}%`, opacity: .12 + p * .72, transform: `translate(-50%,-50%) scale(${.2 + p * 1.5})` }} /> })}<b>{lesson.scene === "curve" ? "ĐƯỜNG CONG" : lesson.scene === "hazard" ? "CHÚ Ý VẬT CẢN" : lesson.scene === "highway" ? "CAO TỐC" : lesson.scene === "night" ? "TẦM NHÌN HẠN CHẾ" : ""}</b></div>
       <div className="guides" style={{ transform: `translateX(calc(-50% + ${-lane * 24}px))` }}><i/><i/><i/><i/></div>
 
       <aside className="leftcol">
@@ -200,7 +211,7 @@ export default function Home() {
       <footer><div><b>{count} / 5</b><span>{finished ? "Xuất sắc!" : "Đang luyện tập"}</span></div><section>{tasks.map((t,i) => <i key={t[0]} className={done[t[0]] ? "done" : i === count ? "now" : ""}/>)}</section><div className="clock"><small>THỜI GIAN</small><b>{String(Math.floor(time/60)).padStart(2,"0")}:{String(time%60).padStart(2,"0")}</b></div></footer>
     </section>
 
-    {!started && <div className="overlay"><section className="startbox"><small>CHƯƠNG TRÌNH HẠNG B · SỐ TỰ ĐỘNG</small><h1>Khởi động đúng.<br/><em>Lái xe an toàn.</em></h1><p>Hoàn thành 3 bài tăng dần độ khó. Có thể dùng bàn phím hoặc nhấn trực tiếp các nút mô phỏng; cần số P–R–N–D thao tác bằng chuột.</p><div><span>⌨ Bàn phím</span><span>☝ Nút mô phỏng</span><span>↖ Chuột vào số</span></div><button onClick={() => startLesson(0)}>BẮT ĐẦU BÀI 01 <b>→</b></button><i>Mục tiêu: đạt ≥80 điểm an toàn</i></section></div>}
+    {!started && <div className="overlay"><section className="startbox"><small>CHƯƠNG TRÌNH HẠNG B · SỐ TỰ ĐỘNG</small><h1>Khởi động đúng.<br/><em>Lái xe an toàn.</em></h1><p>12 bài bám theo các nội dung thực hành hiện hành. Đường mô phỏng chuyển động theo tốc độ; có thể dùng bàn phím hoặc nhấn trực tiếp cụm điều khiển.</p><div><span>12 bài thực hành</span><span>☝ Nút mô phỏng</span><span>↖ Chuột vào số</span></div><button onClick={() => startLesson(0)}>BẮT ĐẦU BÀI 01 <b>→</b></button><i>Mục tiêu: đạt ≥80 điểm an toàn</i></section></div>}
     {paused && started && <div className="overlay soft"><section className="pausebox"><small>ĐÃ TẠM DỪNG</small><h2>Hít thở. Quan sát. Tiếp tục.</h2><button onClick={() => setPaused(false)}>TIẾP TỤC</button><button className="ghost" onClick={() => startLesson(lessonIndex)}>CHƠI LẠI</button></section></div>}
     {finished && started && !paused && <section className="result"><b>★★★</b><h2>Hoàn thành bài {String(lessonIndex + 1).padStart(2, "0")}</h2><p>{score.toLocaleString("vi-VN")} điểm · An toàn {safety}%</p>{lessonIndex < lessons.length - 1 ? <button className="next" onClick={() => startLesson(lessonIndex + 1)}>BÀI TIẾP THEO →</button> : <button onClick={() => startLesson(0)}>HỌC LẠI TỪ ĐẦU</button>}<button className="retry" onClick={() => startLesson(lessonIndex)}>Luyện lại bài này</button></section>}
     {help && <div className="overlay soft" onClick={() => setHelp(false)}><section className="helpbox" onClick={e => e.stopPropagation()}><button className="x" onClick={() => setHelp(false)}>×</button><small>CHƯƠNG TRÌNH 2026</small><h2>Nội dung Cabin Quest bám sát</h2><div className="curriculum"><span>01 · Làm quen xe tại chỗ</span><span>02 · Bãi phẳng &amp; chữ chi</span><span>03 · Đường bằng</span><span>04 · Dốc &amp; đường quanh co</span><span>05 · Đường phức tạp</span><span>06 · Lái ban đêm</span></div><p>Bài hiện tại mô phỏng thao tác chuẩn bị, số tự động và kiểm soát làn. Đây là sản phẩm luyện tập, không thay thế chương trình tại cơ sở đào tạo.</p><a href="https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/4/17-bxd-kem.pdf" target="_blank" rel="noreferrer">Xem chương trình chính thức ↗</a><button onClick={() => setHelp(false)}>ĐÃ HIỂU</button></section></div>}
