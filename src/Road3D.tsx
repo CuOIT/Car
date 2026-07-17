@@ -1,12 +1,18 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-type Props = { speed: number; lane: number; scene: string };
+type Props = { speed: number; lane: number; distance: number; scene: string };
 
-export default function Road3D({ speed, lane, scene: sceneName }: Props) {
+function routeCenter(scene: string, metres: number) {
+  if (scene === "slalom") return Math.sin(metres / 22) * .86;
+  if (scene === "curve") return Math.sin((metres + 18) / 55) * .78;
+  return 0;
+}
+
+export default function Road3D({ speed, lane, distance, scene: sceneName }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const live = useRef({ speed, lane, sceneName });
-  useEffect(() => { live.current = { speed, lane, sceneName }; }, [speed, lane, sceneName]);
+  const live = useRef({ speed, lane, distance, sceneName });
+  useEffect(() => { live.current = { speed, lane, distance, sceneName }; }, [speed, lane, distance, sceneName]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -43,9 +49,11 @@ export default function Road3D({ speed, lane, scene: sceneName }: Props) {
         dash.position.set(x, .025, z); dash.userData = { baseX: x, roadMover: true }; world.add(dash); movers.push(dash);
       }
     }
-    for (const x of [-7.7, 7.7]) {
-      const edge = new THREE.Mesh(new THREE.BoxGeometry(.16, .035, 205), new THREE.MeshBasicMaterial({ color: 0x70ddff }));
-      edge.position.set(x, .03, -94); world.add(edge);
+    for (let z = -178; z < 8; z += 6) {
+      for (const x of [-7.7, 7.7]) {
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(.16, .035, 5.7), new THREE.MeshBasicMaterial({ color: 0x70ddff }));
+        edge.position.set(x, .03, z); edge.userData = { baseX: x, roadMover: true }; world.add(edge); movers.push(edge);
+      }
     }
 
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x344a58, metalness: .72, roughness: .3 });
@@ -95,7 +103,7 @@ export default function Road3D({ speed, lane, scene: sceneName }: Props) {
       camera.aspect = Math.max(.1, rect.width / Math.max(1, rect.height)); camera.updateProjectionMatrix();
       const dt = Math.min(.05, (now - last) / 1000); last = now;
       const current = live.current; const travel = current.speed * dt * .56;
-      camera.position.x += ((current.lane * 1.65) - camera.position.x) * Math.min(1, dt * 5);
+      camera.position.x += ((current.lane * 2.7) - camera.position.x) * Math.min(1, dt * 5);
       camera.rotation.z += ((-current.lane * .022) - camera.rotation.z) * Math.min(1, dt * 4);
       movers.forEach(obj => {
         obj.position.z += travel;
@@ -103,11 +111,8 @@ export default function Road3D({ speed, lane, scene: sceneName }: Props) {
         const baseX = Number(obj.userData.baseX || 0);
         // The route is a fixed function of world depth. Never include clock time here:
         // a stopped vehicle must see a completely stationary road.
-        const curve = current.sceneName === "slalom"
-          ? Math.sin(obj.position.z * .065) * 2.25
-          : current.sceneName === "curve"
-            ? Math.sin((obj.position.z + 28) * .022) * 4.1
-            : 0;
+        const metresAhead = Math.max(0, -obj.position.z) * 1.12;
+        const curve = routeCenter(current.sceneName, current.distance + metresAhead) * 2.7;
         obj.position.x = baseX + curve;
         if (obj.userData.hazard) obj.visible = ["slalom", "hazard", "exam", "yard"].includes(current.sceneName);
         if (obj.userData.vehicle) obj.visible = ["highway", "hazard", "load", "exam", "urban"].includes(current.sceneName);
