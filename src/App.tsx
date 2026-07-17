@@ -144,9 +144,9 @@ export default function Home() {
     return () => window.clearInterval(id);
   }, [paused, started, time]);
 
-  useEffect(() => { if (distance >= lesson.target && Math.abs(lane) < .75) reward("drive", "Hoàn thành quãng đường đúng làn"); }, [distance, lane, lesson.target, reward]);
+  useEffect(() => { if (distance >= lesson.target) reward("drive", "Hoàn thành quãng đường"); }, [distance, lesson.target, reward]);
 
-  const done = useMemo(() => ({ belt, engine, gear: gear === "D", handbrake: !handbrake, drive: distance >= lesson.target && Math.abs(lane) < .75 }), [belt, engine, gear, handbrake, distance, lane, lesson.target]);
+  const done = useMemo(() => ({ belt, engine, gear: gear === "D", handbrake: !handbrake, drive: distance >= lesson.target }), [belt, engine, gear, handbrake, distance, lesson.target]);
   const count = Object.values(done).filter(Boolean).length;
   const finished = count === 5;
 
