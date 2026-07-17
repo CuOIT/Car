@@ -184,7 +184,7 @@ export default function Home() {
             </div>
             <button className={`deck-btn signal-right ${signal === "right" ? "on" : ""}`} onClick={() => pressControl("E", false)}><b>▶</b><span>E</span><small>PHẢI</small></button>
           </div>
-          <div className="cabin-sequence"><small>CHUẨN BỊ XE</small><div><button className={belt ? "done" : ""} onClick={() => pressControl("B", false)}><b>B</b><span>Dây an toàn</span></button><i>→</i><button className={engine ? "done" : ""} onClick={() => pressControl("I", false)}><b>I</b><span>Động cơ</span></button><i>→</i><button className={!handbrake ? "done" : ""} onClick={() => pressControl("H", false)}><b>H</b><span>Phanh tay</span></button></div></div>
+          <div className="cabin-sequence"><small>CHUẨN BỊ XE · THEO THỨ TỰ</small><div className="bih-row"><button className={belt ? "done" : ""} onClick={() => pressControl("B", false)}><b>B</b><span>Dây</span></button><button className={engine ? "done" : ""} onClick={() => pressControl("I", false)}><b>I</b><span>Máy</span></button><button className={!handbrake ? "done" : ""} onClick={() => pressControl("H", false)}><b>H</b><span>Phanh tay</span></button></div></div>
         </section>
       </aside>
 
